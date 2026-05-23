@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KBC - AI & Tech Edition</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Poppins:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script>
+tailwind.config={theme:{extend:{colors:{'kbc':'#0a0a1a','kbc-navy':'#0f1a2e','kbc-gold':'#c8a84e','kbc-bright':'#ffd700','kbc-option':'#14203a','kbc-hover':'#1e2f55','kbc-correct':'#1b7a3d','kbc-wrong':'#8b1a1a'},fontFamily:{'cinzel':['Cinzel','serif'],'poppins':['Poppins','sans-serif']}}}}
+</script>
+<style>
+:root{--gold:#c8a84e;--bright-gold:#ffd700;--bg:#0a0a1a;--navy:#0f1a2e;--correct:#1b7a3d;--wrong:#8b1a1a}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Poppins',sans-serif;background:var(--bg);color:#e8e0d0;overflow-x:hidden;min-height:100vh}
+.screen{display:none;min-height:100vh;position:relative}
+.screen.active{display:flex}
+
+/* Spotlight Background */
+.spotlight{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.spotlight::before,.spotlight::after{content:'';position:absolute;border-radius:50%;filter:blur(120px);opacity:.15;animation:float 12s ease-in-out infinite}
+.spotlight::before{width:600px;height:600px;background:var(--gold);top:-200px;left:-100px}
+.spotlight::after{width:500px;height:500px;background:#0d7377;bottom:-200px;right:-100px;animation-delay:-6s}
+@keyframes float{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(60px,40px) scale(1.15)}}
+
+/* Grid pattern */
+.grid-bg{position:fixed;inset:0;background-image:
+  linear-gradient(rgba(200,168,78,.03) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(200,168,78,.03) 1px,transparent 1px);
+background-size:60px 60px;pointer-events:none;z-index:0}
+
+/* Welcome Screen */
+.welcome-title{font-family:'Cinzel',serif;font-weight:900;font-size:clamp(2.2rem,6vw,4.5rem);background:linear-gradient(135deg,#c8a84e 0%,#ffd700 40%,#fff5cc 50%,#ffd700 60%,#c8a84e 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-shadow:none;line-height:1.1;letter-spacing:2px}
+.welcome-subtitle{font-family:'Cinzel',serif;color:var(--gold);letter-spacing:6px;font-size:clamp(.8rem,2vw,1.2rem)}
+
+/* Option Buttons */
+.opt-btn{position:relative;background:linear-gradient(135deg,#14203a 0%,#1a2744 100%);border:2px solid rgba(200,168,78,.2);border-radius:12px;padding:14px 20px;cursor:pointer;transition:all .3s ease;display:flex;align-items:center;gap:14px;overflow:hidden}
+.opt-btn:hover:not(.disabled){border-color:var(--gold);background:linear-gradient(135deg,#1a2f55 0%,#1e3460 100%);transform:translateY(-2px);box-shadow:0 4px 20px rgba(200,168,78,.15)}
+.opt-btn.selected{border-color:var(--bright-gold);background:linear-gradient(135deg,#2a3a5a 0%,#1e3460 100%);box-shadow:0 0 25px rgba(255,215,0,.2)}
+.opt-btn.locked{border-color:var(--bright-gold);animation:lockPulse 1s ease infinite}
+.opt-btn.correct-ans{border-color:#2ecc71!important;background:linear-gradient(135deg,#1b7a3d,#1a5c2e)!important;box-shadow:0 0 30px rgba(46,204,113,.3)!important}
+.opt-btn.wrong-ans{border-color:#e74c3c!important;background:linear-gradient(135deg,#8b1a1a,#6b1515)!important;box-shadow:0 0 30px rgba(231,76,60,.3)!important}
+.opt-btn.eliminated{opacity:.2;pointer-events:none;text-decoration:line-through}
+.opt-btn.disabled{pointer-events:none;opacity:.6}
+.opt-letter{width:40px;height:40px;border-radius:8px;background:rgba(200,168,78,.15);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gold);font-size:1.1rem;flex-shrink:0;transition:all .3s}
+.opt-btn.selected .opt-letter,.opt-btn.locked .opt-letter{background:var(--gold);color:#0a0a1a}
+.opt-btn.correct-ans .opt-letter{background:#2ecc71!important;color:#fff!important}
+.opt-btn.wrong-ans .opt-letter{background:#e74c3c!important;color:#fff!important}
+
+@keyframes lockPulse{0%,100%{box-shadow:0 0 15px rgba(255,215,0,.2)}50%{box-shadow:0 0 35px rgba(255,215,0,.4)}}
+
+/* Prize Ladder */
+.prize-step{padding:8px 16px;border-left:3px solid transparent;transition:all .4s;font-size:.85rem;opacity:.5}
+.prize-step.current{border-left-color:var(--bright-gold);background:linear-gradient(90deg,rgba(200,168,78,.15),transparent);opacity:1;color:var(--bright-gold);font-weight:700}
+.prize-step.passed{opacity:.7;color:#2ecc71;border-left-color:#2ecc71}
+.prize-step.safe{position:relative}
+.prize-step.safe::after{content:'★';margin-left:6px;color:var(--gold);font-size:.7rem}
+
+/* Timer Circle */
+.timer-ring{transform:rotate(-90deg)}
+.timer-ring circle{transition:stroke-dashoffset .5s linear}
+
+/* Lifeline Buttons */
+.lifeline-btn{width:70px;height:70px;border-radius:50%;border:2px solid rgba(200,168,78,.4);background:linear-gradient(135deg,#14203a,#1a2744);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .3s;gap:2px;position:relative}
+.lifeline-btn:hover:not(.used){border-color:var(--gold);transform:scale(1.08);box-shadow:0 0 20px rgba(200,168,78,.2)}
+.lifeline-btn.used{opacity:.3;pointer-events:none;border-color:#444}
+.lifeline-btn .ll-icon{font-size:1.2rem;color:var(--gold)}
+.lifeline-btn .ll-text{font-size:.55rem;color:#999;font-weight:600}
+
+/* Host Message */
+.host-msg{background:linear-gradient(135deg,rgba(200,168,78,.1),rgba(200,168,78,.03));border:1px solid rgba(200,168,78,.2);border-radius:16px;padding:14px 20px;position:relative;font-style:italic}
+.host-msg::before{content:'🎙️';position:absolute;left:-12px;top:-12px;font-size:1.2rem}
+
+/* Modal Overlay */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.active{display:flex}
+.modal-box{background:linear-gradient(135deg,#0f1a2e,#14203a);border:1px solid rgba(200,168,78,.3);border-radius:20px;padding:30px;max-width:500px;width:90%;position:relative;animation:slideUp .4s ease}
+@keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+
+/* Poll Bar */
+.poll-bar{height:32px;background:linear-gradient(90deg,rgba(200,168,78,.6),rgba(200,168,78,.3));border-radius:6px;transition:width 1s ease;display:flex;align-items:center;padding:0 10px;font-size:.8rem;font-weight:600;color:#0a0a1a;min-width:40px}
+
+/* Animations */
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+@keyframes celebrate{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+.animate-fade{animation:fadeIn .5s ease}
+.animate-scale{animation:scaleIn .4s ease}
+.animate-shake{animation:shake .4s ease}
+.animate-celebrate{animation:celebrate .5s ease}
+
+/* Confetti Canvas */
+#confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:200}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:#0a0a1a}
+::-webkit-scrollbar-thumb{background:#c8a84e;border-radius:3px}
+
+/* Responsive */
+@media(max-width:768px){
+  .lifeline-btn{width:56px;height:56px}
+  .lifeline-btn .ll-icon{font-size:1rem}
+  .lifeline-btn .ll-text{font-size:.45rem}
+  .opt-btn{padding:10px 14px}
+  .opt-letter{width:34px;height:34px;font-size:.95rem}
+}
+
+/* Leaderboard table */
+.lb-row{display:grid;grid-template-columns:40px 1fr 1fr 100px;gap:8px;padding:10px 16px;border-bottom:1px solid rgba(200,168,78,.1);align-items:center;font-size:.9rem}
+.lb-row.lb-header{color:var(--gold);font-weight:700;font-size:.75rem;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid rgba(200,168,78,.2)}
+.lb-row:nth-child(even){background:rgba(200,168,78,.03)}
+</style>
+</head>
+<body>
+<div class="spotlight"></div>
+<div class="grid-bg"></div>
+<canvas id="confetti-canvas"></canvas>
+
+<!-- ===== WELCOME SCREEN ===== -->
+<div id="welcome-screen" class="screen active flex-col items-center justify-center px-4 py-8 relative z-10">
+  <div class="text-center animate-fade">
+    <div class="mb-2 welcome-subtitle">KAUN BANEGA CROREPATI</div>
+    <h1 class="welcome-title mb-4">AI & Tech Edition</h1>
+    <p class="text-gray-400 max-w-md mx-auto mb-8 text-sm leading-relaxed">Answer 10 questions on Artificial Intelligence and Technology. Use your lifelines wisely. Can you win 1 Crore?</p>
+  </div>
+  <div class="w-full max-w-sm animate-scale" style="animation-delay:.2s">
+    <label class="block text-xs text-gray-500 mb-2 ml-1 uppercase tracking-widest">Contestant Name</label>
+    <input id="player-name" type="text" placeholder="Enter your name..." maxlength="20"
+      class="w-full px-5 py-3.5 bg-kbc-option border-2 border-kbc-gold/20 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-kbc-gold/60 transition-all text-lg font-poppins mb-6">
+    <button onclick="startGame()" class="w-full py-4 rounded-xl font-cinzel font-bold text-lg tracking-wider transition-all hover:scale-[1.02] active:scale-[.98]"
+      style="background:linear-gradient(135deg,#c8a84e,#ffd700);color:#0a0a1a;box-shadow:0 4px 25px rgba(200,168,78,.3)">
+      START THE GAME
+    </button>
+    <button onclick="showLeaderboard()" class="w-full mt-3 py-3 rounded-xl font-poppins font-semibold text-sm border border-kbc-gold/30 text-kbc-gold hover:bg-kbc-gold/10 transition-all">
+      <i class="fas fa-trophy mr-2"></i>View Leaderboard
+    </button>
+  </div>
+  <div class="mt-10 flex gap-8 text-center text-xs text-gray-600 animate-fade" style="animation-delay:.4s">
+    <div><i class="fas fa-question-circle text-kbc-gold/50 text-lg mb-1 block"></i>10 Questions</div>
+    <div><i class="fas fa-clock text-kbc-gold/50 text-lg mb-1 block"></i>30s Timer</div>
+    <div><i class="fas fa-life-ring text-kbc-gold/50 text-lg mb-1 block"></i>4 Lifelines</div>
+  </div>
+</div>
+
+<!-- ===== GAME SCREEN ===== -->
+<div id="game-screen" class="screen flex-col relative z-10">
+  <!-- Top Bar -->
+  <div class="flex items-center justify-between px-4 md:px-8 py-3 border-b border-kbc-gold/10 bg-kbc/80 backdrop-blur-sm">
+    <!-- Lifelines -->
+    <div class="flex gap-2 md:gap-3">
+      <button id="ll-5050" class="lifeline-btn" onclick="useLifeline('5050')" title="50:50">
+        <span class="ll-icon">50:50</span>
+        <span class="ll-text">FIFTY</span>
+      </button>
+      <button id="ll-audience" class="lifeline-btn" onclick="useLifeline('audience')" title="Audience Poll">
+        <span class="ll-icon"><i class="fas fa-users"></i></span>
+        <span class="ll-text">AUDIENCE</span>
+      </button>
+      <button id="ll-phone" class="lifeline-btn" onclick="useLifeline('phone')" title="Phone a Friend">
+        <span class="ll-icon"><i class="fas fa-phone"></i></span>
+        <span class="ll-text">PHONE</span>
+      </button>
+      <button id="ll-flip" class="lifeline-btn" onclick="useLifeline('flip')" title="Flip Question">
+        <span class="ll-icon"><i class="fas fa-sync-alt"></i></span>
+        <span class="ll-text">FLIP</span>
+      </button>
+    </div>
+    <!-- Timer -->
+    <div class="flex items-center gap-3">
+      <div class="relative">
+        <svg class="timer-ring" width="60" height="60">
+          <circle cx="30" cy="30" r="26" stroke="rgba(200,168,78,.15)" stroke-width="4" fill="none"/>
+          <circle id="timer-circle" cx="30" cy="30" r="26" stroke="var(--gold)" stroke-width="4" fill="none" stroke-dasharray="163.36" stroke-dashoffset="0" stroke-linecap="round"/>
+        </svg>
+        <span id="timer-text" class="absolute inset-0 flex items-center justify-center font-bold text-lg" style="color:var(--gold)">30</span>
+      </div>
+    </div>
+    <!-- Question Info -->
+    <div class="text-right">
+      <div class="text-xs text-gray-500 uppercase tracking-widest">Question</div>
+      <div id="q-number" class="font-cinzel font-bold text-kbc-gold text-xl">1/10</div>
+    </div>
+  </div>
+
+  <!-- Main Area -->
+  <div class="flex flex-1 overflow-hidden">
+    <!-- Prize Ladder (side) -->
+    <div id="prize-ladder" class="hidden lg:flex flex-col-reverse w-52 border-r border-kbc-gold/10 py-4 px-2 bg-kbc/50 backdrop-blur-sm overflow-y-auto">
+    </div>
+
+    <!-- Game Center -->
+    <div class="flex-1 flex flex-col items-center justify-center px-4 md:px-8 py-6 max-w-3xl mx-auto w-full">
+      <!-- Prize for current question -->
+      <div id="current-prize" class="font-cinzel text-kbc-bright text-2xl md:text-3xl font-bold mb-6 text-center animate-scale">
+        ₹1,000
+      </div>
+      <!-- Question -->
+      <div id="question-box" class="w-full bg-gradient-to-br from-kbc-navy to-kbc-option border border-kbc-gold/20 rounded-2xl p-6 md:p-8 mb-8 text-center animate-scale">
+        <p id="question-text" class="text-lg md:text-xl font-semibold leading-relaxed"></p>
+      </div>
+      <!-- Options Grid -->
+      <div id="options-grid" class="w-full grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+      </div>
+      <!-- Action Buttons -->
+      <div class="flex gap-3 w-full max-w-md">
+        <button id="lock-btn" onclick="lockAnswer()" class="flex-1 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-30 disabled:cursor-not-allowed" style="background:linear-gradient(135deg,#c8a84e,#ffd700);color:#0a0a1a" disabled>
+          <i class="fas fa-lock mr-2"></i>LOCK KARO
+        </button>
+        <button id="quit-btn" onclick="quitGame()" class="px-6 py-3 rounded-xl font-bold text-sm border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-all">
+          <i class="fas fa-door-open mr-2"></i>QUIT
+        </button>
+      </div>
+      <!-- Host Message -->
+      <div id="host-msg" class="host-msg w-full max-w-lg mt-5 text-sm text-gray-300">
+        Computer ji, pehla sawaal lekar aaiye...
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== RESULT SCREEN ===== -->
+<div id="result-screen" class="screen flex-col items-center justify-center px-4 py-8 relative z-10">
+  <div class="text-center animate-scale">
+    <div id="result-icon" class="text-6xl mb-4"></div>
+    <h2 id="result-title" class="font-cinzel text-3xl md:text-4xl font-bold mb-2"></h2>
+    <p id="result-subtitle" class="text-gray-400 mb-6"></p>
+    <div id="result-amount" class="font-cinzel text-5xl md:text-6xl font-bold mb-2" style="color:var(--bright-gold)"></div>
+    <p class="text-gray-500 text-sm mb-8">Total Winnings</p>
+    <div id="result-stats" class="grid grid-cols-3 gap-4 max-w-sm mx-auto mb-8"></div>
+    <div class="flex flex-col sm:flex-row gap-3 justify-center">
+      <button onclick="startGame()" class="px-8 py-3.5 rounded-xl font-bold transition-all hover:scale-[1.02]" style="background:linear-gradient(135deg,#c8a84e,#ffd700);color:#0a0a1a">
+        PLAY AGAIN
+      </button>
+      <button onclick="showLeaderboard()" class="px-8 py-3.5 rounded-xl font-bold border border-kbc-gold/30 text-kbc-gold hover:bg-kbc-gold/10 transition-all">
+        <i class="fas fa-trophy mr-2"></i>LEADERBOARD
+      </button>
+      <button onclick="goHome()" class="px-8 py-3.5 rounded-xl font-bold border border-gray-600 text-gray-400 hover:bg-gray-800 transition-all">
+        HOME
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LEADERBOARD MODAL ===== -->
+<div id="lb-modal" class="modal-overlay">
+  <div class="modal-box max-w-lg">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-cinzel text-xl font-bold text-kbc-gold"><i class="fas fa-trophy mr-2"></i>Leaderboard</h3>
+      <button onclick="closeLeaderboard()" class="text-gray-500 hover:text-white transition-colors text-xl"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="lb-row lb-header"><span>#</span><span>Name</span><span>Amount</span><span>Correct</span></div>
+    <div id="lb-body" class="max-h-80 overflow-y-auto"></div>
+    <div id="lb-empty" class="text-center py-8 text-gray-600 hidden">No entries yet. Be the first to play!</div>
+    <button onclick="clearLeaderboard()" class="mt-4 text-xs text-red-400/60 hover:text-red-400 transition-colors">Clear Leaderboard</button>
+  </div>
+</div>
+
+<!-- ===== AUDIENCE POLL MODAL ===== -->
+<div id="poll-modal" class="modal-overlay">
+  <div class="modal-box">
+    <h3 class="font-cinzel text-lg font-bold text-kbc-gold mb-5 text-center"><i class="fas fa-users mr-2"></i>Audience Poll</h3>
+    <div id="poll-bars" class="space-y-3"></div>
+    <button onclick="closePoll()" class="mt-5 w-full py-2.5 rounded-lg font-semibold text-sm border border-kbc-gold/30 text-kbc-gold hover:bg-kbc-gold/10 transition-all">Close</button>
+  </div>
+</div>
+
+<!-- ===== PHONE A FRIEND MODAL ===== -->
+<div id="phone-modal" class="modal-overlay">
+  <div class="modal-box text-center">
+    <div class="text-4xl mb-3">📞</div>
+    <h3 class="font-cinzel text-lg font-bold text-kbc-gold mb-2">Phone a Friend</h3>
+    <p class="text-gray-500 text-xs mb-4">Calling your friend <span id="friend-name" class="text-kbc-gold"></span>...</p>
+    <div id="friend-thinking" class="mb-4"><i class="fas fa-spinner fa-spin text-kbc-gold text-2xl"></i></div>
+    <div id="friend-answer" class="hidden bg-kbc-option border border-kbc-gold/20 rounded-xl p-4 mb-4">
+      <p id="friend-msg" class="text-gray-300 text-sm italic"></p>
+      <p id="friend-pick" class="font-bold text-kbc-bright text-lg mt-2"></p>
+    </div>
+    <button id="phone-close-btn" onclick="closePhone()" class="hidden w-full py-2.5 rounded-lg font-semibold text-sm border border-kbc-gold/30 text-kbc-gold hover:bg-kbc-gold/10 transition-all">Close</button>
+  </div>
+</div>
+
+<script>
+/* ============================================
+   DATA - Questions, Prizes, Friends
+   ============================================ */
+const ALL_QUESTIONS = [
+  {q:"What does 'AI' stand for?",o:["Automated Intelligence","Artificial Intelligence","Advanced Integration","Applied Innovation"],a:1},
+  {q:"Which company created the virtual assistant 'Siri'?",o:["Google","Amazon","Apple","Microsoft"],a:2},
+  {q:"What does 'URL' stand for?",o:["Uniform Resource Locator","Universal Reference Link","United Resource Locator","Uniform Reference Link"],a:0},
+  {q:"Which programming language is known as the language of the web?",o:["Python","Java","JavaScript","C++"],a:2},
+  {q:"What is the full form of 'CPU'?",o:["Central Processing Unit","Computer Personal Unit","Central Program Utility","Core Processing Unit"],a:0},
+  {q:"Which tech company's logo features a partially eaten fruit?",o:["Samsung","Microsoft","Apple","Google"],a:2},
+  {q:"What does 'HTML' stand for?",o:["Hyper Text Markup Language","High Tech Modern Language","Hyper Transfer Markup Language","Home Tool Markup Language"],a:0},
+  {q:"Which of these is a popular AI chatbot by OpenAI?",o:["Alexa","ChatGPT","Cortana","Bixby"],a:1},
+  {q:"What is commonly called the 'brain' of a computer?",o:["RAM","Hard Drive","CPU","GPU"],a:2},
+  {q:"Which company developed the Android operating system?",o:["Apple","Microsoft","Google","Samsung"],a:2},
+  {q:"What does 'RAM' stand for?",o:["Random Access Memory","Read Access Memory","Rapid Access Module","Run And Manage"],a:0},
+  {q:"What is a 'bot' short for?",o:["Bottom","Robot","Bootstrap","Binary Output Token"],a:1},
+  {q:"Which device is used to type text into a computer?",o:["Monitor","Keyboard","Printer","Speaker"],a:1},
+  {q:"What is 'Machine Learning' a subset of?",o:["Hardware Engineering","Artificial Intelligence","Database Management","Network Security"],a:1},
+  {q:"Who is known as the father of the computer?",o:["Alan Turing","Charles Babbage","Bill Gates","Steve Jobs"],a:1},
+  {q:"What does 'USB' stand for?",o:["Universal Serial Bus","United System Board","Unified Storage Bus","Universal System Bridge"],a:0},
+  {q:"What does 'GPU' stand for?",o:["General Processing Unit","Graphics Processing Unit","Global Power Utility","Guided Program Update"],a:1}
+];
+
+const PRIZES = [1000,2000,5000,10000,20000,40000,80000,160000,320000,10000000];
+const SAFE_HAVENS = [4, 9]; // indices (0-based) for safe havens after Q5 and Q10
+const FRIENDS = ["Rahul","Priya","Amit","Sneha","Vikram","Anjali","Deepak","Neha","Ravi","Pooja"];
+
+/* ============================================
+   GAME STATE
+   ============================================ */
+let state = {
+  playerName: "Contestant",
+  questions: [],
+  currentQ: 0,
+  selectedOption: -1,
+  locked: false,
+  timer: 30,
+  timerInterval: null,
+  lifelines: {5050:false, audience:false, phone:false, flip:false},
+  eliminatedOptions: [],
+  correctCount: 0,
+  gameOver: false
+};
+
+/* ============================================
+   AUDIO - Web Audio API
+   ============================================ */
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playTone(freq, duration, type='sine', vol=0.12){
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + duration);
+}
+
+function playCorrect(){
+  playTone(523,.15,'sine',.1);
+  setTimeout(()=>playTone(659,.15,'sine',.1),120);
+  setTimeout(()=>playTone(784,.3,'sine',.1),240);
+}
+function playWrong(){
+  playTone(330,.2,'sawtooth',.08);
+  setTimeout(()=>playTone(262,.4,'sawtooth',.08),200);
+}
+function playLock(){
+  playTone(440,.1,'triangle',.1);
+  setTimeout(()=>playTone(550,.1,'triangle',.1),80);
+}
+function playTick(){
+  playTone(800,.05,'square',.03);
+}
+function playSelect(){
+  playTone(600,.08,'sine',.06);
+}
+function playWin(){
+  [523,659,784,1047].forEach((f,i)=>{
+    setTimeout(()=>playTone(f,.2,'sine',.1), i*150);
+  });
+}
+
+/* ============================================
+   UTILITY FUNCTIONS
+   ============================================ */
+function formatPrize(amount){
+  return '₹' + amount.toLocaleString('en-IN');
+}
+
+function shuffleArray(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function getSafePrize(){
+  // Find the highest safe haven passed
+  for(let i=SAFE_HAVENS.length-1;i>=0;i--){
+    if(state.currentQ > SAFE_HAVENS[i]){
+      return PRIZES[SAFE_HAVENS[i]];
+    }
+  }
+  return 0;
+}
+
+/* ============================================
+   GAME FLOW
+   ============================================ */
+function startGame(){
+  const nameInput = document.getElementById('player-name').value.trim();
+  state = {
+    playerName: nameInput || "Contestant",
+    questions: [],
+    currentQ: 0,
+    selectedOption: -1,
+    locked: false,
+    timer: 30,
+    timerInterval: null,
+    lifelines: {5050:false, audience:false, phone:false, flip:false},
+    eliminatedOptions: [],
+    correctCount: 0,
+    gameOver: false
+  };
+  // Pick 10 random questions
+  state.questions = shuffleArray(ALL_QUESTIONS).slice(0,10);
+  // Reset lifeline UI
+  ['5050','audience','phone','flip'].forEach(ll=>{
+    document.getElementById('ll-'+ll).classList.remove('used');
+  });
+  showScreen('game-screen');
+  buildPrizeLadder();
+  showQuestion();
+}
+
+function buildPrizeLadder(){
+  const ladder = document.getElementById('prize-ladder');
+  ladder.innerHTML = '';
+  PRIZES.forEach((p,i)=>{
+    const div = document.createElement('div');
+    div.className = 'prize-step' + (SAFE_HAVENS.includes(i)?' safe':'');
+    div.id = 'prize-'+i;
+    div.innerHTML = `<span class="mr-2 text-gray-600 text-xs">${i+1}.</span>${formatPrize(p)}`;
+    ladder.appendChild(div);
+  });
+  updatePrizeLadder();
+}
+
+function updatePrizeLadder(){
+  PRIZES.forEach((_,i)=>{
+    const el = document.getElementById('prize-'+i);
+    el.classList.remove('current','passed');
+    if(i < state.currentQ) el.classList.add('passed');
+    else if(i === state.currentQ) el.classList.add('current');
+  });
+}
+
+function showQuestion(){
+  const q = state.questions[state.currentQ];
+  state.selectedOption = -1;
+  state.locked = false;
+  state.eliminatedOptions = [];
+  state.timer = 30;
+
+  document.getElementById('q-number').textContent = `${state.currentQ+1}/10`;
+  document.getElementById('current-prize').textContent = formatPrize(PRIZES[state.currentQ]);
+  document.getElementById('current-prize').classList.add('animate-scale');
+  setTimeout(()=>document.getElementById('current-prize').classList.remove('animate-scale'),500);
+
+  document.getElementById('question-text').textContent = q.q;
+  document.getElementById('question-box').classList.add('animate-scale');
+  setTimeout(()=>document.getElementById('question-box').classList.remove('animate-scale'),500);
+
+  // Build options
+  const grid = document.getElementById('options-grid');
+  grid.innerHTML = '';
+  const letters = ['A','B','C','D'];
+  q.o.forEach((opt,i)=>{
+    const btn = document.createElement('div');
+    btn.className = 'opt-btn animate-fade';
+    btn.style.animationDelay = (i*0.08)+'s';
+    btn.id = 'opt-'+i;
+    btn.innerHTML = `<span class="opt-letter">${letters[i]}</span><span class="flex-1">${opt}</span>`;
+    btn.onclick = ()=> selectOption(i);
+    grid.appendChild(btn);
+  });
+
+  // Reset buttons
+  document.getElementById('lock-btn').disabled = true;
+  document.getElementById('quit-btn').disabled = false;
+
+  // Host message
+  const msgs = [
+    `Computer ji, ${state.currentQ+1 === 1 ? 'pehla' : state.currentQ+1 === 2 ? 'dusra' : state.currentQ+1 === 3 ? 'teesra' : (state.currentQ+1)+'va'} sawaal lekar aaiye...`,
+    `Yeh raha aapka ${state.currentQ+1}va sawaal, ${state.playerName}...`,
+    `Chaliye aage badhte hain, sawaal number ${state.currentQ+1}...`
+  ];
+  setHost(msgs[Math.floor(Math.random()*msgs.length)]);
+
+  updatePrizeLadder();
+  startTimer();
+}
+
+function selectOption(i){
+  if(state.locked || state.eliminatedOptions.includes(i)) return;
+  playSelect();
+  state.selectedOption = i;
+  document.querySelectorAll('.opt-btn').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('opt-'+i).classList.add('selected');
+  document.getElementById('lock-btn').disabled = false;
+  setHost("Kya aap is option ko lock karna chahte hain? Sochiye, samjhiye, phir jawab dijiye...");
+}
+
+function lockAnswer(){
+  if(state.selectedOption === -1 || state.locked) return;
+  state.locked = true;
+  stopTimer();
+  playLock();
+
+  document.getElementById('opt-'+state.selectedOption).classList.add('locked');
+  document.getElementById('lock-btn').disabled = true;
+  document.getElementById('quit-btn').disabled = true;
+
+  setHost("Lock kar diya jaye! Computer ji, sahi jawab ki khoj kariye...");
+
+  // Dramatic pause then reveal
+  setTimeout(()=> revealAnswer(), 2500);
+}
+
+function revealAnswer(){
+  const q = state.questions[state.currentQ];
+  const correct = q.a;
+  const selected = state.selectedOption;
+
+  // Show correct answer
+  document.getElementById('opt-'+correct).classList.remove('locked','selected');
+  document.getElementById('opt-'+correct).classList.add('correct-ans');
+
+  if(selected === correct){
+    // Correct answer
+    playCorrect();
+    state.correctCount++;
+    document.getElementById('question-box').classList.add('animate-celebrate');
+    setTimeout(()=>document.getElementById('question-box').classList.remove('animate-celebrate'),500);
+
+    const isSafe = SAFE_HAVENS.includes(state.currentQ);
+    if(isSafe){
+      setHost(`Sahi jawab! ${formatPrize(PRIZES[state.currentQ])} jeet gaye aap! Yeh amount safe hai, koi bhi hoga aapke saath!`);
+    } else if(state.currentQ === 9){
+      setHost(`SAHI JAWAB! ${state.playerName}, aapne jeeta hai ${formatPrize(PRIZES[9])}! One Crore! Aap KBC ke crorepati hain!`);
+      playWin();
+    } else {
+      const safeMsg = state.currentQ > SAFE_HAVENS[0] ? " Aap safe hain, koi bhi hoga aapke saath!" : "";
+      setHost(`Sahi jawab! ${formatPrize(PRIZES[state.currentQ])} jeet gaye aap!${safeMsg}`);
+    }
+
+    // Show confetti for safe havens and final
+    if(isSafe || state.currentQ === 9){
+      launchConfetti();
+    }
+
+    if(state.currentQ < 9){
+      setTimeout(()=> nextQuestion(), 3000);
+    } else {
+      // Won the game!
+      setTimeout(()=> endGame(true, PRIZES[9]), 3000);
+    }
+  } else {
+    // Wrong answer
+    playWrong();
+    document.getElementById('opt-'+selected).classList.remove('locked','selected');
+    document.getElementById('opt-'+selected).classList.add('wrong-ans');
+    document.getElementById('opt-'+selected).classList.add('animate-shake');
+
+    const safeAmount = getSafePrize();
+    setHost(`Galat jawab! Sahi uttar hai ${['A','B','C','D'][correct]}. Aap jeete hain ${formatPrize(safeAmount)}`);
+    setTimeout(()=> endGame(false, safeAmount), 3000);
+  }
+}
+
+function nextQuestion(){
+  state.currentQ++;
+  showQuestion();
+}
+
+function quitGame(){
+  stopTimer();
+  const wonAmount = state.currentQ > 0 ? PRIZES[state.currentQ - 1] : 0;
+  const safeAmount = Math.max(wonAmount, getSafePrize());
+  if(state.currentQ > 0){
+    setHost(`Aap chal rahe hain ${formatPrize(safeAmount)} lekar. Bahut achcha khela aapne!`);
+  }
+  setTimeout(()=> endGame(true, safeAmount, true), 2000);
+}
+
+function endGame(won, amount, quit=false){
+  state.gameOver = true;
+  stopTimer();
+
+  // Save to leaderboard
+  saveToLeaderboard(state.playerName, amount, state.correctCount);
+
+  // Show result screen
+  const iconEl = document.getElementById('result-icon');
+  const titleEl = document.getElementById('result-title');
+  const subtitleEl = document.getElementById('result-subtitle');
+  const amountEl = document.getElementById('result-amount');
+  const statsEl = document.getElementById('result-stats');
+
+  if(won && !quit && state.currentQ === 9){
+    iconEl.textContent = '🏆';
+    titleEl.textContent = 'CROREPATI!';
+    titleEl.style.color = 'var(--bright-gold)';
+    subtitleEl.textContent = `Mubarak ho ${state.playerName}! Aap ne jeeta 1 Crore!`;
+    launchConfetti();
+  } else if(quit){
+    iconEl.textContent = '🚶';
+    titleEl.textContent = 'Aap Chal Gaye!';
+    titleEl.style.color = 'var(--gold)';
+    subtitleEl.textContent = `Bahut achcha khela aapne, ${state.playerName}!`;
+  } else if(won){
+    iconEl.textContent = '🎯';
+    titleEl.textContent = 'Bahut Achcha Khela!';
+    titleEl.style.color = 'var(--gold)';
+    subtitleEl.textContent = `Safe hai aapka amount, ${state.playerName}!`;
+  } else {
+    iconEl.textContent = '💔';
+    titleEl.textContent = 'Galat Jawab!';
+    titleEl.style.color = '#e74c3c';
+    subtitleEl.textContent = `Koi baat nahi ${state.playerName}, acha khela aapne!`;
+  }
+
+  amountEl.textContent = formatPrize(amount);
+  statsEl.innerHTML = `
+    <div class="bg-kbc-option rounded-xl p-3 border border-kbc-gold/10">
+      <div class="text-2xl font-bold text-kbc-gold">${state.correctCount}</div>
+      <div class="text-xs text-gray-500">Correct</div>
+    </div>
+    <div class="bg-kbc-option rounded-xl p-3 border border-kbc-gold/10">
+      <div class="text-2xl font-bold text-gray-300">${state.currentQ + (won&&!quit?1:0) - (quit?0:0)}</div>
+      <div class="text-xs text-gray-500">Answered</div>
+    </div>
+    <div class="bg-kbc-option rounded-xl p-3 border border-kbc-gold/10">
+      <div class="text-2xl font-bold" style="color:${amount>=PRIZES[4]?'var(--gold)':'#999'}">${amount>=PRIZES[4]?'Safe':'Low'}</div>
+      <div class="text-xs text-gray-500">Status</div>
+    </div>`;
+
+  showScreen('result-screen');
+}
+
+/* ============================================
+   TIMER
+   ============================================ */
+function startTimer(){
+  state.timer = 30;
+  updateTimerUI();
+  clearInterval(state.timerInterval);
+  state.timerInterval = setInterval(()=>{
+    state.timer--;
+    updateTimerUI();
+    if(state.timer <= 10 && state.timer > 0) playTick();
+    if(state.timer <= 5){
+      document.getElementById('timer-text').style.color = '#e74c3c';
+      document.getElementById('timer-circle').style.stroke = '#e74c3c';
+    } else {
+      document.getElementById('timer-text').style.color = 'var(--gold)';
+      document.getElementById('timer-circle').style.stroke = 'var(--gold)';
+    }
+    if(state.timer <= 0){
+      stopTimer();
+      timeUp();
+    }
+  }, 1000);
+}
+
+function stopTimer(){
+  clearInterval(state.timerInterval);
+}
+
+function updateTimerUI(){
+  document.getElementById('timer-text').textContent = state.timer;
+  const circumference = 2 * Math.PI * 26; // ~163.36
+  const offset = circumference * (1 - state.timer / 30);
+  document.getElementById('timer-circle').style.strokeDashoffset = offset;
+}
+
+function timeUp(){
+  if(state.locked) return;
+  state.locked = true;
+  setHost("Samay samapt! Time khatam ho gaya!");
+  playWrong();
+
+  const q = state.questions[state.currentQ];
+  document.querySelectorAll('.opt-btn').forEach(b=>b.classList.add('disabled'));
+  document.getElementById('opt-'+q.a).classList.add('correct-ans');
+
+  const safeAmount = getSafePrize();
+  setTimeout(()=> endGame(false, safeAmount), 2500);
+}
+
+/* ============================================
+   LIFELINES
+   ============================================ */
+function useLifeline(type){
+  if(state.lifelines[type] || state.locked) return;
+  state.lifelines[type] = true;
+  document.getElementById('ll-'+type.replace('5050','5050')).classList.add('used');
+
+  switch(type){
+    case '5050': useFiftyFifty(); break;
+    case 'audience': useAudiencePoll(); break;
+    case 'phone': usePhoneAFriend(); break;
+    case 'flip': useFlipQuestion(); break;
+  }
+}
+
+function useFiftyFifty(){
+  const q = state.questions[state.currentQ];
+  const wrongIndices = [];
+  q.o.forEach((_,i)=>{
+    if(i !== q.a && !state.eliminatedOptions.includes(i)) wrongIndices.push(i);
+  });
+  // Remove 2 random wrong options
+  const toRemove = shuffleArray(wrongIndices).slice(0,2);
+  toRemove.forEach(i=>{
+    state.eliminatedOptions.push(i);
+    document.getElementById('opt-'+i).classList.add('eliminated');
+  });
+  // If currently selected is eliminated, deselect
+  if(state.eliminatedOptions.includes(state.selectedOption)){
+    state.selectedOption = -1;
+    document.getElementById('lock-btn').disabled = true;
+    document.querySelectorAll('.opt-btn').forEach(b=>b.classList.remove('selected'));
+  }
+  setHost("Computer ji, do galat options hata dijiye! Ab sirf do reh gaye hain...");
+  playTone(440,.15,'triangle',.08);
+}
+
+function useAudiencePoll(){
+  const q = state.questions[state.currentQ];
+  const letters = ['A','B','C','D'];
+
+  // Generate poll - correct answer gets higher percentage
+  let percents = [0,0,0,0];
+  const correctPct = 45 + Math.floor(Math.random()*30); // 45-74%
+  percents[q.a] = correctPct;
+  const remaining = 100 - correctPct;
+  let left = remaining;
+  const otherIndices = [0,1,2,3].filter(i=>i!==q.a && !state.eliminatedOptions.includes(i));
+
+  otherIndices.forEach((idx,i)=>{
+    if(i === otherIndices.length - 1){
+      percents[idx] = left;
+    } else {
+      const p = Math.floor(Math.random() * (left * 0.6));
+      percents[idx] = p;
+      left -= p;
+    }
+  });
+
+  // Build poll bars
+  const barsDiv = document.getElementById('poll-bars');
+  barsDiv.innerHTML = '';
+  [0,1,2,3].forEach(i=>{
+    if(state.eliminatedOptions.includes(i)){
+      percents[i] = 0;
+    }
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-3';
+    row.innerHTML = `
+      <span class="w-6 font-bold text-kbc-gold">${letters[i]}</span>
+      <div class="flex-1 bg-kbc/50 rounded-lg overflow-hidden">
+        <div class="poll-bar" style="width:0%">${percents[i]}%</div>
+      </div>
+      <span class="w-12 text-right text-sm font-semibold text-gray-400">${percents[i]}%</span>`;
+    barsDiv.appendChild(row);
+    // Animate bar
+    setTimeout(()=>{
+      row.querySelector('.poll-bar').style.width = percents[i]+'%';
+    }, 100 + i*150);
+  });
+
+  document.getElementById('poll-modal').classList.add('active');
+  setHost("Chaliye dekhte hain audience kya kehti hai...");
+  playTone(523,.1,'sine',.06);
+}
+
+function closePoll(){
+  document.getElementById('poll-modal').classList.remove('active');
+}
+
+function usePhoneAFriend(){
+  const q = state.questions[state.currentQ];
+  const friend = FRIENDS[Math.floor(Math.random()*FRIENDS.length)];
+  const letters = ['A','B','C','D'];
+
+  document.getElementById('friend-name').textContent = friend;
+  document.getElementById('friend-thinking').classList.remove('hidden');
+  document.getElementById('friend-answer').classList.add('hidden');
+  document.getElementById('phone-close-btn').classList.add('hidden');
+  document.getElementById('phone-modal').classList.add('active');
+
+  // Friend answers after 3 seconds
+  setTimeout(()=>{
+    const isRight = Math.random() < 0.72; // 72% accuracy
+    const friendAnswer = isRight ? q.a : [0,1,2,3].filter(i=>i!==q.a && !state.eliminatedOptions.includes(i))[Math.floor(Math.random()*3)];
+    const confidence = isRight ? (60 + Math.floor(Math.random()*30)) : (30 + Math.floor(Math.random()*30));
+
+    const phrases = isRight
+      ? [`Mujhe lagta hai ${letters[friendAnswer]} sahi hai, ${confidence}% sure hoon.`,`Main confident hoon ki ${letters[friendAnswer]} hi jawab hai!`,`Bhai, ${letters[friendAnswer]} mark karo, pakka hai!`]
+      : [`Mujhe pakhwa nahi hai, par shayad ${letters[friendAnswer]} ho... ${confidence}% sure hoon.`,`Thoda confuse hoon, par ${letters[friendAnswer]} lag raha hai...`,`Hmm, ${letters[friendAnswer]} try karo, par guarantee nahi hai...`];
+
+    document.getElementById('friend-thinking').classList.add('hidden');
+    document.getElementById('friend-answer').classList.remove('hidden');
+    document.getElementById('friend-msg').textContent = phrases[Math.floor(Math.random()*phrases.length)];
+    document.getElementById('friend-pick').textContent = `Option ${letters[friendAnswer]}: ${q.o[friendAnswer]}`;
+    document.getElementById('phone-close-btn').classList.remove('hidden');
+    playTone(660,.15,'sine',.08);
+  }, 3000);
+
+  setHost(`${friend} se baat kariye, shayad wo madad kar sakein...`);
+}
+
+function closePhone(){
+  document.getElementById('phone-modal').classList.remove('active');
+}
+
+function useFlipQuestion(){
+  // Get a new question not in current set
+  const currentQTexts = state.questions.map(q=>q.q);
+  const available = ALL_QUESTIONS.filter(q=>!currentQTexts.includes(q.q));
+  if(available.length > 0){
+    state.questions[state.currentQ] = available[Math.floor(Math.random()*available.length)];
+  }
+  stopTimer();
+  setHost("Chaliye sawaal badal dete hain! Naya sawaal aapke saamne...");
+  playTone(440,.1,'triangle',.08);
+  setTimeout(()=>playTone(550,.1,'triangle',.08),100);
+  // Show new question
+  showQuestion();
+}
+
+/* ============================================
+   HOST MESSAGE
+   ============================================ */
+function setHost(msg){
+  const el = document.getElementById('host-msg');
+  el.style.opacity = '0';
+  setTimeout(()=>{
+    el.textContent = msg;
+    el.style.opacity = '1';
+    el.style.transition = 'opacity 0.4s ease';
+  }, 150);
+}
+
+/* ============================================
+   LEADERBOARD - localStorage
+   ============================================ */
+function getLeaderboard(){
+  try{
+    return JSON.parse(localStorage.getItem('kbc_leaderboard')) || [];
+  }catch(e){return [];}
+}
+
+function saveToLeaderboard(name, amount, correct){
+  const lb = getLeaderboard();
+  lb.push({
+    name: name,
+    amount: amount,
+    correct: correct,
+    date: new Date().toLocaleDateString('en-IN')
+  });
+  lb.sort((a,b)=>b.amount - a.amount || b.correct - a.correct);
+  localStorage.setItem('kbc_leaderboard', JSON.stringify(lb.slice(0,50)));
+}
+
+function showLeaderboard(){
+  const lb = getLeaderboard();
+  const body = document.getElementById('lb-body');
+  const empty = document.getElementById('lb-empty');
+
+  if(lb.length === 0){
+    body.innerHTML = '';
+    empty.classList.remove('hidden');
+  } else {
+    empty.classList.add('hidden');
+    body.innerHTML = lb.slice(0,20).map((entry,i)=>{
+      const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+      return `<div class="lb-row">
+        <span class="text-center ${i<3?'text-lg':'text-gray-500'}">${medal}</span>
+        <span class="font-semibold truncate">${entry.name}</span>
+        <span class="font-bold" style="color:var(--gold)">${formatPrize(entry.amount)}</span>
+        <span class="text-gray-500 text-xs">${entry.correct}/10 <span class="text-gray-700">${entry.date||''}</span></span>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('lb-modal').classList.add('active');
+}
+
+function closeLeaderboard(){
+  document.getElementById('lb-modal').classList.remove('active');
+}
+
+function clearLeaderboard(){
+  localStorage.removeItem('kbc_leaderboard');
+  showLeaderboard(); // Refresh
+}
+
+function goHome(){
+  showScreen('welcome-screen');
+}
+
+/* ============================================
+   CONFETTI
+   ============================================ */
+function launchConfetti(){
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const particles = [];
+  const colors = ['#c8a84e','#ffd700','#2ecc71','#e74c3c','#3498db','#f39c12','#9b59b6','#1abc9c'];
+
+  for(let i=0; i<150; i++){
+    particles.push({
+      x: Math.random()*canvas.width,
+      y: Math.random()*canvas.height - canvas.height,
+      vx: (Math.random()-0.5)*6,
+      vy: Math.random()*3 + 2,
+      size: Math.random()*8 + 3,
+      color: colors[Math.floor(Math.random()*colors.length)],
+      rotation: Math.random()*360,
+      rotSpeed: (Math.random()-0.5)*10,
+      life: 1
+    });
+  }
+
+  let frame = 0;
+  function animate(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    let alive = false;
+
+    particles.forEach(p=>{
+      if(p.life <= 0) return;
+      alive = true;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.05;
+      p.rotation += p.rotSpeed;
+      if(p.y > canvas.height) p.life -= 0.02;
+      p.life -= 0.002;
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation * Math.PI/180);
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size/2, -p.size/4, p.size, p.size/2);
+      ctx.restore();
+    });
+
+    frame++;
+    if(alive && frame < 300){
+      requestAnimationFrame(animate);
+    } else {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+    }
+  }
+  animate();
+}
+
+/* ============================================
+   KEYBOARD SHORTCUTS
+   ============================================ */
+document.addEventListener('keydown',(e)=>{
+  if(state.gameOver) return;
+  const screen = document.getElementById('game-screen');
+  if(!screen.classList.contains('active')) return;
+
+  // 1-4 or A-D to select options
+  const key = e.key.toUpperCase();
+  const map = {'1':0,'2':1,'3':2,'4':3,'A':0,'B':1,'C':2,'D':3};
+  if(map[key] !== undefined && !state.locked){
+    selectOption(map[key]);
+  }
+  // Enter to lock
+  if(e.key === 'Enter' && state.selectedOption !== -1 && !state.locked){
+    lockAnswer();
+  }
+  // Escape to quit
+  if(e.key === 'Escape'){
+    quitGame();
+  }
+});
+
+/* ============================================
+   INIT - Handle window resize for confetti
+   ============================================ */
+window.addEventListener('resize',()=>{
+  const canvas = document.getElementById('confetti-canvas');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+
+// Resume audio context on first interaction
+document.addEventListener('click',()=>{
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+},{once:true});
+</script>
+</body>
+</html>
