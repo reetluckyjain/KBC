@@ -8,23 +8,6 @@ An interactive **Kaun Banega Crorepati (KBC)** style quiz game built using pure 
 
 👉 https://reetluckyjain.github.io/KBC/
 
----
-
-## 👀 Preview
-
-<p align="center">
-  <img src="./preview.png" width="800"/>
-</p>
-
----
-
-## 🎥 Demo
-
-<p align="center">
-  <img src="./demo.gif" width="800"/>
-</p>
-
----
 
 ## ✨ Features
 
